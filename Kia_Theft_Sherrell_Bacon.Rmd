@@ -1,0 +1,400 @@
+---
+title: "Kia Theft"
+author: "Sherrell Bacon"
+date: "2025-10-05"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+# rm(list=ls())
+```
+
+
+```{r setup, include=FALSE}
+library(dplyr);library(readxl);library(tidyverse);library(DescTools);library(lubridate);library(scales);library(treemap);library(tidyr);library(openxlsx);library(readxl);library(janitor);library(stringr);library(treemapify)
+```
+
+
+```{r cars}
+# Import data sets
+car_theft_map<- "/Volumes/Editing/Bellevue Univ/Masters in Data Science/DSC 640 Data Presentation and Visualization/Week 5 & 6/Datasets/carTheftsMap.csv"
+kia_thefts  <- "/Volumes/Editing/Bellevue Univ/Masters in Data Science/DSC 640 Data Presentation and Visualization/Week 5 & 6/Datasets/kiaHyundaiThefts.csv"
+milwaukee_data  <- "/Volumes/Editing/Bellevue Univ/Masters in Data Science/DSC 640 Data Presentation and Visualization/Week 5 & 6/Datasets/KiaHyundaiMilwaukeeData.csv"
+motherboard_data <- "/Volumes/Editing/Bellevue Univ/Masters in Data Science/DSC 640 Data Presentation and Visualization/Week 5 & 6/Datasets/Motherboard VICE News Kia Hyundai Theft Data.xlsx"
+
+# Read in the files into a dataframe
+car_theft_map <- read.csv(file =car_theft_map, header= TRUE)
+kia_thefts <- read.csv(file =kia_thefts, header= TRUE)
+milwaukee_data <- read.csv(file =milwaukee_data , header= TRUE)
+motherboard_data <- read_excel(motherboard_data, skip = 2)
+```
+
+
+```{r}
+# Clear the environment 
+# rm(list = ls())
+```
+
+
+```{r}
+head(car_theft_map)
+```
+
+```{r pressure, echo=FALSE}
+car_theft_map <- car_theft_map %>%
+  mutate(across(starts_with("countCarThefts"), as.numeric))
+# Create date column for time series
+kia_thefts <- kia_thefts %>%
+  mutate(date = ymd(paste(year, month, "01")))
+
+milwaukee_data <- milwaukee_data %>%
+  mutate(date = ymd(paste(year, month, "01")))
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+# Filter results to the most recent year 
+national_2022 <- kia_thefts %>%
+    filter(year== 2022)
+```
+
+
+```{r}
+# Distribution of Kia/Hyundai thefts in 2022
+hist(national_2022$countKiaHyundaiThefts,main="Theft Histogram",xlab="Kia Hyundai Thefts")
+```
+```{r}
+national_2022 <- kia_thefts %>%
+  filter(year == 2022) %>%
+summarise(
+    KiaHyundai = sum(countKiaHyundaiThefts, na.rm = TRUE),
+    Other = sum(countOtherThefts, na.rm = TRUE)
+  ) %>%
+  pivot_longer(everything(), names_to = "Type", values_to = "Count") %>%
+  mutate(
+    Percentage = Count / sum(Count) * 100,
+    Label = paste0(Type, "\n", comma(Count), " thefts\n(", 
+                   round(Percentage, 1), "%)")
+  )
+# Create the pie chart using geom_bar
+pie_chart <- ggplot(national_2022, aes(x = "", y = Count, fill = Type)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y", start = 0) +
+  scale_fill_manual(values = c("KiaHyundai" = "red", "Other" = "grey")) +
+  geom_text(aes(label = Label), 
+            position = position_stack(vjust = 0.5),
+            size = 5, fontface = "bold", color = "white") +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 18, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12, color = "gray30")
+  ) +
+    # Create labels for the chart
+  labs(
+    title = "Kia & Hyundai: A Disproportionate Share of Vehicle Thefts",
+    subtitle = "National Data - 2022"
+  )
+
+# ggsave("01_pie_chart_national.png", pie_chart, width = 10, height = 8, dpi = 300)
+
+pie_chart
+
+```
+
+```{r}
+national_kia<- kia_thefts %>%
+  summarise(
+    KiaHyundai = sum(countKiaHyundaiThefts, na.rm = TRUE),
+    Other = sum(countOtherThefts, na.rm = TRUE)
+  ) %>%
+  pivot_longer(everything(), names_to = "Type", values_to = "Count") %>%
+  mutate(
+    Percentage = Count / sum(Count) * 100,
+    Label = paste0(Type, "\n", comma(Count), " thefts\n(", 
+                   round(Percentage, 1), "%)")
+  )
+# Create the pie chart using geom_bar
+pie_chart_1 <- ggplot(national_kia, aes(x = "", y = Count, fill = Type)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y", start = 0) +
+  scale_fill_manual(values = c("KiaHyundai" = "red", "Other" = "grey")) +
+  geom_text(aes(label = Label), 
+            position = position_stack(vjust = 0.5),
+            size = 5, fontface = "bold", color = "white") +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 18, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12, color = "gray30")
+  ) +
+    # Create labels for the chart
+  labs(
+    title = "Kia & Hyundai: A Disproportionate Share of Vehicle Thefts",
+    subtitle = "National Data - 2022"
+  )
+
+# ggsave("01_pie_chart_national.png", pie_chart, width = 10, height = 8, dpi = 300)
+
+pie_chart_1
+```
+
+
+
+
+```{r}
+# Find peak month for Milwaukee
+milwaukee_peak <- milwaukee_data %>%
+  arrange(desc(countKiaHyundaiThefts)) %>%
+  slice(1) %>%
+  select(countKiaHyundaiThefts, countOtherThefts, month, year) %>%
+  pivot_longer(cols = c(countKiaHyundaiThefts, countOtherThefts),
+               names_to = "Type", values_to = "Count") %>%
+  mutate(
+    Type = ifelse(Type == "countKiaHyundaiThefts", "Kia/Hyundai", "Other Vehicles"),
+    Percentage = Count / sum(Count) * 100,
+    ymax = cumsum(Percentage),
+    ymin = c(0, head(ymax, n = -1)),
+    labelPosition = (ymax + ymin) / 2,
+    label = paste0(round(Percentage, 1), "%")
+  )
+
+```
+
+
+```{r}
+donut_chart <- ggplot(milwaukee_peak, aes(ymax = ymax, ymin = ymin, 
+                                          xmax = 4, xmin = 3, fill = Type)) +
+  geom_rect(color = "white", size = 2) +
+  scale_fill_manual(values = c("Kia/Hyundai" = "#C62828", "Other Vehicles" = "#BDBDBD")) +
+  coord_polar(theta = "y") +
+  xlim(c(2, 4)) +
+  theme_void() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    legend.text = element_text(size = 12),
+    plot.title = element_text(hjust = 0.5, size = 18, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 11, color = "gray30")
+  ) +
+  geom_text(aes(x = 3.5, y = labelPosition, label = label), 
+            size = 6, fontface = "bold") +
+  labs(
+    title = "Milwaukee's Theft Crisis at Its Peak",
+    subtitle = paste0(milwaukee_peak$month[1], " ", milwaukee_peak$year[1], 
+                     " - Over 3 in 4 stolen vehicles were Kia or Hyundai")
+  )
+donut_chart
+# ggsave("02_donut_chart_milwaukee.png", donut_chart, width = 10, height = 8, dpi = 300)
+
+```
+
+
+```{r}
+top_cities <- kia_thefts %>%
+  filter(year == 2022) %>%
+  group_by(city, state) %>%
+  summarise(
+    KiaHyundai = sum(countKiaHyundaiThefts, na.rm = TRUE),
+    Other = sum(countOtherThefts, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(Total = KiaHyundai + Other,
+         Location = paste0(city, ", ", state)) %>%
+  arrange(desc(KiaHyundai)) %>%
+  head(10) %>%
+  pivot_longer(cols = c(KiaHyundai, Other), 
+               names_to = "Type", values_to = "Count") %>%
+  mutate(
+    Type = ifelse(Type == "KiaHyundai", "Kia/Hyundai", "Other Vehicles"),
+    Location = factor(Location, levels = unique(Location))
+  )
+```
+
+
+```{r}
+
+stacked_bar <- ggplot(top_cities, aes(x = reorder(Location, -Count), y = Count, fill = Type)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  scale_fill_manual(values = c("Kia/Hyundai" = "red", "Other Vehicles" = "grey")) +
+  scale_y_continuous(labels = scales::comma, expand = c(0, 0)) +
+  coord_flip() +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    legend.title = element_blank(),
+    legend.text = element_text(size = 11),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 11, color = "gray40"),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    title = "Cities Hit Hardest by the Kia/Hyundai Theft Wave",
+    subtitle = "Top 10 Cities by Kia/Hyundai Theft Volume - 2022",
+    x = NULL,
+    y = "Number of Vehicle Thefts"
+  )
+stacked_bar
+```
+
+```{r}
+# motherboard_data data set 
+# Clean column names
+df_raw <- clean_names(motherboard_data)
+
+# Inspect column names to identify pattern
+colnames(df_raw)
+
+# Add a vector of the city names
+cities <- c(
+  "Denver", "El_Paso", "Portland", "Atlanta", "Chicago", "Virginia_Beach",
+  "Louisville", "San_Diego", "Sacramento", "Dallas", "Fort_Worth",
+  "Bakersfield", "Omaha_NE", "Lubbock_TX", "Fremont_CA",
+  "San_Antonio", "Irving_Texas", "Madison_WI", "Frisco_TX", "Lincoln_NE", "Wichita_KS",
+  "Plano_TX", "Akron_OH", "Buffalo_NY", "Chula_Vista_CA", "Reno_NV","Oxnard_CA"
+  ,"San_Francisco","McKinney_TX","Arlington_TX","Garland_TX","Riverside County_CA"
+  ,"Stockton_CA","Corpus_Cristi_TX","Cincinatti","Montgomery_County_MD","Henderson_NV"
+  ,"San_Bernardino_CA","Newport_News_VA","Amarillo_TX","New Haven_CT","Washington_D.C."
+  ,"Boise_ID","Austin, TX", "Chandler, AZ","Modesto_CA","San_Jose_CA","Aurora_IL"
+  ,"Vancouver_WA","Raleigh_NC","St.Petersburg_FL","Milwaukee_WI","Los_Angeles_CA"
+  ,"Glendale_AZ","Orlando_FL","Eugene_OR","Rochester_NY","Durham_NC","Norfolk_VA"
+  ,"Pittsburgh_PA","Miami_FL","Spokane_WA","Salt_Lake_City_UT","Minneapolis_MN"
+  ,"Anaheim_CA","Providence_RI","Syracuse_NY","Peoria_AZ","Houston_TX"
+  ,"Prince_Georges_County_MD"
+)
+
+# Generate dynamic column names for all cities
+new_names <- c("month", unlist(lapply(cities, function(c) {
+    paste0(c, c("_kia_hyundais", "_all", "_percent"))
+})))
+
+# Apply to data frame 
+colnames(df_raw)[1:length(new_names)] <- new_names
+
+# Convert all columns except month to numeric
+df_raw <- df_raw %>%
+  mutate(across(-month, ~as.numeric(as.character(.x))))
+
+#Pivot longer to combine all cities into one tidy table
+df_long <- df_raw %>%
+  pivot_longer(
+    cols = -month,
+    names_to = c("city", ".value"),
+    names_pattern = "(.*)_(kia_hyundais|all|percent)"
+  )
+```
+
+
+```{r}
+# Create treemap of average Kia/Hyundai theft rate by city
+df_long%>%
+  group_by(city) %>%
+  summarise(
+    avg_kia_hyundais = mean(kia_hyundais, na.rm = TRUE),
+    avg_all = mean(all, na.rm = TRUE),
+    avg_percent = mean(percent, na.rm = TRUE)
+  ) %>%
+  arrange(desc(avg_kia_hyundais)) %>%
+  slice_head(n = 15) %>%
+  mutate(Label = paste0(city, "\n", comma(avg_kia_hyundais))) %>%
+  ggplot(aes(area = avg_kia_hyundais, fill = avg_percent, label = Label)) +
+  geom_treemap(color = "white", size = 2) +
+  geom_treemap_text(
+    color = "white", 
+    place = "centre", 
+    size = 12, 
+    fontface = "bold", 
+    grow = FALSE
+  ) +
+  scale_fill_gradient(
+    low = "#EF5350", high = "#B71C1C",
+    labels = percent_format(accuracy = 1),
+    name = "Avg. % Thefts (Kia/Hyundai)"
+  ) +
+  labs(
+    title = "Top 15 U.S. Cities for Kia/Hyundai Thefts",
+    subtitle = "Based on Motherboard VICE data (avg. across months)",
+    caption = "Source: Motherboard VICE Investigation"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 12, color = "gray40", hjust = 0.5)
+  )
+```
+
+```{r}
+# Area chart 
+# class(milwaukee_data)
+
+area_chart <- ggplot(milwaukee_data, aes(x = date, y = countKiaHyundaiThefts)) +
+  geom_area(fill = "#D32F2F", alpha = 0.7) +
+  geom_line(color = "#B71C1C", size = 1.2) +
+  scale_x_date(date_breaks = "6 months", date_labels = "%b\n%Y") +
+  scale_y_continuous(labels = scales::comma, expand = c(0, 0), limits = c(0, NA)) +
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 11, color = "gray40"),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    title = "Milwaukee's Kia/Hyundai Theft Epidemic: A Rapid Escalation",
+    subtitle = "Monthly theft counts showing the dramatic surge",
+    x = "Date",
+    y = "Kia/Hyundai Thefts per Month"
+  )
+area_chart
+```
+
+```{r}
+# Filter geographic car theft map data with significant changes
+geo_hotspots <- car_theft_map %>%
+  filter(!is.na(percentChange2019to2022), # filter out rows with missing data
+         !is.na(latitude), # keep only rows with coords
+         !is.na(longitude),
+         percentChange2019to2022 > 0) %>% # only positive changes
+  arrange(desc(percentChange2019to2022)) %>% # order by descending
+  mutate(
+    Change_Category = cut(percentChange2019to2022, # add a new column to bucket categories
+                          breaks = quantile(percentChange2019to2022,
+                                            probs = c(0, 0.25, 0.5, 0.75, 1)),
+                          labels = c("0-50%", "50-100%", "100-200%", ">200%"))
+  )
+```
+
+```{r}
+scatter_map <- ggplot(geo_hotspots, aes(x = longitude, y = latitude)) +
+  geom_point(aes(size = percentChange2019to2022, color = Change_Category),
+             alpha = 0.6) +
+  scale_size_continuous(range = c(2, 15), labels = scales::percent_format(scale = 1),
+                       name = "Theft Increase\n(2019-2022)") +
+  scale_color_manual(values = c("#FFA726", "#FF7043", "#E53935", "#B71C1C"),
+                    name = "Change Category") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 11, color = "gray40"),
+    axis.title = element_text(size = 11)
+  ) +
+  labs(
+    title = "Hotspots of Vehicle Theft Increases Across America",
+    subtitle = "City-level percent change in vehicle thefts (2019-2022)",
+    x = "Longitude",
+    y = "Latitude"
+  )
+scatter_map
+
+```
+
+
