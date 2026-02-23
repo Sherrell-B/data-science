@@ -37,10 +37,7 @@ The dataset includes reported vehicle theft incidents with variables such as:
 - Data visualization
 
 ## Tools & Technologies
-- Python
-- Pandas
-- Matplotlib / Seaborn
-- Jupyter Notebook
+- R
 
 ## Key Findings
 - Theft incidents increased significantly during specific time windows
